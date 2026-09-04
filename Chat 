@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam Registration Management System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+:root{
+  --primary:#1d4ed8; --accent:#16a34a; --danger:#dc2626; --warn:#f59e0b; --bg:#f1f5f9; --card:#ffffff;
+}
+*{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
+body{margin:0;background:var(--bg);color:#0f172a}
+header{background:var(--primary);color:white;padding:18px;text-align:center}
+header h1{margin:0;font-size:22px}
+nav{display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+nav button{background:white;color:var(--primary);border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600}
+.container{max-width:1000px;margin:20px auto;padding:0 15px}
+.card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.08);margin-bottom:20px}
+label{display:block;margin-top:12px;font-weight:600;font-size:14px}
+input,select{width:100%;padding:11px;margin-top:5px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px}
+input:focus,select:focus{border-color:var(--primary);outline:none}
+.subject-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:10px}
+.subject-grid label{font-weight:500;display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer}
+.subject-grid input{width:auto;margin:0}
+.syllabus-options{display:none;margin-top:5px;padding:8px;background:#fef3c7;border-radius:6px}
+.fee-box{background:#eff6ff;border:2px dashed var(--primary);padding:15px;border-radius:8px;text-align:center;margin-top:15px}
+.fee-box h2{margin:0;color:var(--primary);font-size:24px}
+.payment-options{margin-top:15px;padding:15px;border:1px solid #e2e8f0;border-radius:8px}
+.payment-options label{display:inline-flex;align-items:center;margin-right:15px;font-weight:500}
+.btns{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+button{flex:1;min-width:140px;padding:12px;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600}
+.btn-submit{background:var(--accent);color:white}
+.btn-clear{background:var(--danger);color:white}
+.btn-add{background:var(--warn);color:white}
+.btn-pdf{background:var(--primary);color:white}
+.notification{display:none;padding:12px;border-radius:8px;margin-bottom:15px;font-weight:600}
+.notification.success{background:#dcfce7;color:#166534;border:1px solid #16a34a}
+.notification.error{background:#fee2e2;color:#991b1b;border:1px solid #dc2626}
+.receipt{display:none;background:white;border:2px solid var(--primary);padding:25px;border-radius:12px;margin-top:20px}
+.receipt h2{text-align:center;color:var(--primary);margin-top:0}
+.receipt table{width:100%;border-collapse:collapse;margin-top:15px}
+.receipt td{padding:10px;border-bottom:1px solid #e2e8f0}
+.receipt.label{font-weight:700;width:38%}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);padding:15px;border-radius:10px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.06)}
+.stat-card h3{margin:0;font-size:28px;color:var(--primary)}
+table.data{width:100%;border-collapse:collapse;font-size:14px}
+table.data th,table.data td{border:1px solid #e2e8f0;padding:8px;text-align:left}
+table.data th{background:#f8fafc}
+.hidden{display:none}
+.login-box{max-width:400px;margin:80px auto}
+small{color:#64748b;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Zimsec & Cambridge Exam Registration</h1>
+  <nav id="nav">
+    <button onclick="showTab('register')">Register Student</button>
+    <button onclick="showAdminLogin()">Admin Dashboard</button>
+    <button onclick="logout()" id="logoutBtn" class="hidden">Logout</button>
+  </nav>
+</header>
+
+<div class="container">
+  <!-- ADMIN LOGIN -->
+  <div id="adminLogin" class="tab hidden">
+    <div class="card login-box">
+      <h3 style="text-align:center">Admin Login</h3>
+      <label>Username</label>
+      <input type="text" id="adminUser" placeholder="admin">
+      <label>Password</label>
+      <input type="password" id="adminPass" placeholder="admin123">
+      <div class="btns">
+        <button class="btn-submit" onclick="adminLogin()">Login</button>
+        <button class="btn-clear" onclick="showTab('register')">Back</button>
+      </div>
+      <p style="font-size:12px;color:#64748b;text-align:center">Default: admin / admin123. Change in code line 350.</p>
+    </div>
+  </div>
+
+  <!-- REGISTER TAB -->
+  <div id="register" class="tab">
+    <div id="notif" class="notification"></div>
+    <div id="closedMsg" class="notification error hidden">Sorry the registration is closed. Maximum 100 candidates reached.</div>
+
+    <div class="card" id="regCard">
+      <form id="regForm">
+        <label>Candidate Full Name *</label>
+        <input type="text" id="name" required placeholder="e.g. Tinashe Moyo">
+
+        <label>Gender *</label>
+        <select id="gender" required>
+          <option value="">-- Select --</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+
+        <label>Date of Birth *</label>
+        <input type="text" id="dob" placeholder="dd/mm/yy" required maxlength="8">
+        <small>Enter in format: dd/mm/yy e.g. 15/06/08</small>
+
+        <label>School Name *</label>
+        <input type="text" id="school" required placeholder="e.g. Harare High School">
+
+        <label>Centre Number *</label>
+        <input type="text" id="centre" required placeholder="e.g. 00123">
+
+        <label>Level *</label>
+        <select id="level" required>
+          <option value="">-- Select Level --</option>
+          <option value="O Level">O Level</option>
+          <option value="A Level">A Level</option>
+        </select>
+
+        <label>Examination Board *</label>
+        <select id="board" required>
+          <option value="">-- Select Board --</option>
+          <option value="Zimsec">Zimsec</option>
+          <option value="Cambridge">Cambridge</option>
+        </select>
+
+        <label>Select Subjects - Tick all you do *</label>
+        <div class="subject-grid" id="subjects"></div>
+
+        <div class="fee-box">
+          <p style="margin:0">Exam Fee</p>
+          <h2>$<span id="totalFee">0.00</span></h2>
+          <p style="margin:5px 0;font-size:13px">O Level: $12/subject | A Level: $18/subject</p>
+        </div>
+
+        <!-- Payment Options - Optional -->
+        <div class="payment-options" id="paymentOptions">
+          <label>Payment Method - Optional</label><br>
+          <label><input type="radio" name="payment" value="Ecocash"> Ecocash</label>
+          <label><input type="radio" name="payment" value="OneMoney"> OneMoney</label>
+          <label><input type="radio" name="payment" value="Mukuru"> Mukuru</label>
+          <label><input type="radio" name="payment" value="Bank Card"> Bank Card</label>
+          <input type="text" id="paymentRef" placeholder="Transaction ID / Phone number - Optional" style="margin-top:8px">
+        </div>
+
+        <div class="btns">
+          <button type="submit" class="btn-submit">Register Student</button>
+          <button type="button" class="btn-clear" id="clearBtn">Clear All</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- RECEIPT -->
+    <div class="receipt" id="receipt">
+      <h2>OFFICIAL EXAM REGISTRATION RECEIPT</h2>
+      <p style="text-align:center;font-size:13px">School Copy - Keep Safe</p>
+      <table id="receiptTable">
+        <tr><td class="label">Name of Candidate:</td><td id="rName"></td></tr>
+        <tr><td class="label">Candidate Number:</td><td id="rCandNo"></td></tr>
+        <tr><td class="label">Gender:</td><td id="rGender"></td></tr>
+        <tr><td class="label">Date of Birth:</td><td id="rDob"></td></tr>
+        <tr><td class="label">Name of School:</td><td id="rSchool"></td></tr>
+        <tr><td class="label">Centre Number:</td><td id="rCentre"></td></tr>
+        <tr><td class="label">Level:</td><td id="rLevel"></td></tr>
+        <tr><td class="label">Examination Board:</td><td id="rBoard"></td></tr>
+        <tr><td class="label">Date of Registration:</td><td id="rDate"></td></tr>
+        <tr><td class="label">Subjects Registered:</td><td id="rSubjects"></td></tr>
+        <tr><td class="label">Payment Method:</td><td id="rPayment"></td></tr>
+        <tr><td class="label">Total Amount Due:</td><td id="rFee"></td></tr>
+        <tr><td class="label">Payment Status:</td><td id="rStatus"></td></tr>
+      </table>
+      <div class="btns">
+        <button class="btn-pdf" onclick="downloadPDF()">Download PDF Receipt</button>
+        <button class="btn-add" onclick="newRegistration()">Add New Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD TAB - ADMIN ONLY -->
+  <div id="dashboard" class="tab hidden">
+    <div id="fullAlert" class="notification error hidden">System is FULL: 100 candidates registered. Registration closed.</div>
+    <div class="stats">
+      <div class="stat-card"><h3 id="totalStudents">0</h3><p>Total Students</p></div>
+      <div class="stat-card"><h3 id="oLevelCount">0</h3><p>O Level Students</p></div>
+      <div class="stat-card"><h3 id="aLevelCount">0</h3><p>A Level Students</p></div>
+      <div class="stat-card"><h3 id="totalRevenue">0</h3><p>Total Revenue $</p></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">All Registrations</h3>
+      <div style="overflow-x:auto">
+        <table class="data" id="recordsTable">
+          <thead><tr>
+            <th>Cand No</th><th>Name</th><th>Gender</th><th>DOB</th><th>School</th><th>Centre</th><th>Level</th><th>Board</th><th>Subjects</th><th>Payment</th><th>Fee $</th><th>Status</th><th>Date</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="btns">
+        <button class="btn-clear" onclick="clearAllRecords()">Delete All Records</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "admin123";
+const MAX_CANDIDATES = 100;
+const CAND_START = 3000;
+
+const subjectsList = [
+  "Mathematics","English Language","Shona","Ndebele","Combined Science","Physics","Chemistry","Biology",
+  "Geography","History","Commerce","Principles of Accounts","Computer Studies","Literature in English","Agriculture"
+];
+const feePerSubject = {"O Level":12,"A Level":18};
+let candidateCounter = parseInt(localStorage.getItem('candCounter') || CAND_START.toString());
+let isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+
+// Build subjects
+const subjectsDiv = document.getElementById('subjects');
+subjectsList.forEach(sub=>{
+  let html = `<label><input type="checkbox" name="subject" value="${sub}" data-sub="${sub}"> ${sub}</label>`;
+  if(sub === "Mathematics"){
+    html += `<div class="syllabus-options" id="mathSyllabus">
+      <label><input type="radio" name="mathSyllabus" value="Syllabus A"> Syllabus A</label>
+      <label><input type="radio" name="mathSyllabus" value="Syllabus B"> Syllabus B</label>
+    </div>`;
+  }
+  subjectsDiv.innerHTML += html;
+});
+
+function calculateFee(){
+  const level = document.getElementById('level').value;
+  const count = document.querySelectorAll('input[name="subject"]:checked').length;
+  const fee = feePerSubject[level]? feePerSubject[level] * count : 0;
+  document.getElementById('totalFee').textContent = fee.toFixed(2);
+}
+
+document.getElementById('level').addEventListener('change',function(){
+  calculateFee();
+  toggleMathSyllabus();
+});
+
+document.addEventListener('change',e=>{
+  if(e.target.name==='subject') {
+    calculateFee();
+    toggleMathSyllabus();
+  }
+});
+
+function toggleMathSyllabus(){
+  const level = document.getElementById('level').value;
+  const mathCheckbox = document.querySelector('input[data-sub="Mathematics"]');
+  const syllabusDiv = document.getElementById('mathSyllabus');
+  if(!mathCheckbox ||!syllabusDiv) return;
+  if(level === "O Level" && mathCheckbox.checked){
+    syllabusDiv.style.display = 'block';
+    syllabusDiv.querySelectorAll('input').forEach(i=>i.required=true);
+  } else {
+    syllabusDiv.style.display = 'none';
+    syllabusDiv.querySelectorAll('input').forEach(i=>{i.required=false; i.checked=false;});
+  }
+}
+
+// Auto-format DOB dd/mm/yy
+document.getElementById('dob').addEventListener('input',function(e){
+  let v = e.target.value.replace(/\D/g,'').slice(0,6);
+  if(v.length>2) v = v.slice(0,2)+'/'+v.slice(2);
+  if(v.length>5) v = v.slice(0,5)+'/'+v.slice(5);
+  e.target.value = v;
+});
+
+function parseDOB(dobStr){
+  const parts = dobStr.split('/');
+  if(parts.length!==3) return null;
+  let day = parseInt(parts[0],10), month = parseInt(parts[1],10), year = parseInt(parts[2],10);
+  if(isNaN(day)||isNaN(month)||isNaN(year)) return null;
+  if(year < 50) year += 2000; else year += 1900;
+  const date = new Date(year, month-1, day);
+  if(date.getFullYear()!==year || date.getMonth()!==month-1 || date.getDate()!==day) return null;
+  return date;
+}
+
+function getAge(dobDate){
+  const today = new Date();
+  let age = today.getFullYear() - dobDate.getFullYear();
+  const m = today.getMonth() - dobDate.getMonth();
+  if(m<0 || (m===0 && today.getDate()<dobDate.getDate())) age--;
+  return age;
+}
+
+function checkRegistrationClosed(){
+  const records = JSON.parse(localStorage.getItem('examRecords') || '[]');
+  if(records.length >= MAX_CANDIDATES || candidateCounter > 3100){
+    document.getElementById('closedMsg').classList.remove('hidden');
+    document.getElementById('regCard').classList.add('hidden');
+    return true;
+  } else {
+    document.getElementById('closedMsg').classList.add('hidden');
+    document.getElementById('regCard').classList.remove('hidden');
+  }
+  return false;
+}
+
+document.getElementById('regForm').addEventListener('submit',function(e){
+  e.preventDefault();
+
+  if(checkRegistrationClosed()) return;
+
+  const dobStr = document.getElementById('dob').value.trim();
+  const dobDate = parseDOB(dobStr);
+  const notif = document.getElementById('notif');
+
+  if(!dobDate){
+    notif.className = 'notification error';
+    notif.textContent = "Invalid DOB format. Use dd/mm/yy e.g. 15/06/08";
+    notif.style.display = 'block';
+    return;
+  }
+
+  const age = getAge(dobDate);
+  if(age < 12){
+    notif.className = 'notification error';
+    notif.textContent = "Sorry You Can't Register. This system is for teenagers and above";
+    notif.style.display = 'block';
+    return;
+  }
+  if(age > 30){
+    notif.className = 'notification error';
+    notif.textContent = "Sorry You're too Old, Leave the System";
+    notif.style.display = 'block';
+    return;
+  }
+
+  const name = document.getElementById('name').value.trim();
+  const gender = document.getElementById('gender').value;
+  const school = document.getElementById('school').value.trim();
+  const centre = document.getElementById('centre').value.trim();
+  const level = document.getElementById('level').value;
+  const board = document.getElementById('board').value;
+  const paymentRadio = document.querySelector('input[name="payment"]:checked');
+  const payment = paymentRadio? paymentRadio.value : "Not Paid";
+  const paymentRef = document.getElementById('paymentRef').value.trim();
+  const paymentInfo = paymentRef? `${payment} - ${paymentRef}` : payment;
+
+  let subjects = [...document.querySelectorAll('input[name="subject"]:checked')].map(s=>{
+    if(s.value === "Mathematics" && level === "O Level"){
+      const syl = document.querySelector('input[name="mathSyllabus"]:checked');
+      return syl? `Mathematics - ${syl.value}` : "Mathematics";
+    }
+    return s.value;
+  });
+
+  if(subjects.length===0){alert("Select at least one subject");return;}
+
+  if(candidateCounter > 3100){
+    alert("Candidate number range 3000-3100 exceeded.");
+    return;
+  }
+
+  const candNo = "C" + candidateCounter;
+  candidateCounter++;
+  localStorage.setItem('candCounter',candidateCounter);
+  const regDate = new Date().toLocaleDateString('en-GB');
+  const totalFee = feePerSubject[level] * subjects.length;
+  const paymentStatus = payment === "Not Paid"? "PENDING PAYMENT" : "PAID - Confirmed";
+
+  // Fill receipt
+  document.getElementById('rName').textContent = name;
+  document.getElementById('rCandNo').textContent = candNo;
+  document.getElementById('rGender').textContent = gender;
+  document.getElementById('rDob').textContent = dobStr;
+  document.getElementById('rSchool').textContent = school;
+  document.getElementById('rCentre').textContent = centre;
+  document.getElementById('rLevel').textContent = level;
+  document.getElementById('rBoard').textContent = board;
+  document.getElementById('rDate').textContent = regDate;
+  document.getElementById('rSubjects').textContent = subjects.join(", ");
+  document.getElementById('rPayment').textContent = paymentInfo;
+  document.getElementById('rFee').textContent = "$" + totalFee.toFixed(2);
+  document.getElementById('rStatus').textContent = paymentStatus;
+
+  // Save record
+  const record = {name,gender,dob:dobStr,school,centre,level,board,subjects:subjects.join(", "),payment,paymentRef,totalFee,candNo,regDate,paymentStatus};
+  let records = JSON.parse(localStorage.getItem('examRecords') || '[]');
+  records.push(record);
+  localStorage.setItem('examRecords',JSON.stringify(records));
+
+  notif.className = 'notification success';
+  notif.textContent = "Registration successful! Receipt generated below.";
+  notif.style.display = 'block';
+  document.getElementById('receipt').style.display = 'block';
+  document.getElementById('regCard').classList.add('hidden');
+  document.getElementById('receipt').scrollIntoView({behavior:'smooth'});
+  checkRegistrationClosed();
+  updateDashboard();
+});
+
+document.getElementById('clearBtn').onclick=()=>{
+  if(confirm("Clear all form fields?")){
+    document.getElementById('regForm').reset();
+    calculateFee();
+    document.getElementById('notif').style.display='none';
+    document.getElementById('receipt').style.display='none';
+    document.getElementById('regCard').classList.remove('hidden');
+    toggleMathSyllabus();
+  }
+};
+
+function downloadPDF(){
+  const element = document.getElementById('receipt');
+  const opt = {
+    margin:0.5,
+    filename: document.getElementById('rCandNo').textContent + '_Receipt.pdf',
+    image:{type:'jpeg',quality:0.98},
+    html2canvas:{scale:2},
+    jsPDF:{unit:'in',format:'a4',orientation:'portrait'}
+  };
+  html2pdf().set(opt).from(element).save();
+}
+
+function newRegistration(){
+  document.getElementById('regForm').reset();
+  calculateFee();
+  document.getElementById('notif').style.display='none';
+  document.getElementById('receipt').style.display='none';
+  document.getElementById('regCard').classList.remove('hidden');
+  toggleMathSyllabus();
+}
+
+function showTab(id){
+  if(id==='dashboard' &&!isAdmin){
+    showAdminLogin();
+    return;
+  }
+  document.querySelectorAll('.tab').forEach(t=>t.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  if(id==='dashboard') updateDashboard();
+}
+
+function showAdminLogin(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.add('hidden'));
+  document.getElementById('adminLogin').classList.remove('hidden');
+}
+
+function adminLogin(){
+  const user = document.getElementById('adminUser').value;
+  const pass = document.getElementById('adminPass').value;
+  if(user===ADMIN_USER && pass===ADMIN_PASS){
+    isAdmin = true;
+    sessionStorage.setItem('isAdmin','true');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    showTab('dashboard');
+  } else {
+    alert("Invalid admin credentials");
+  }
+}
+
+function logout(){
+  isAdmin = false;
+  sessionStorage.removeItem('isAdmin');
+  document.getElementById('logoutBtn').classList.add('hidden');
+  showTab('register');
+}
+
+function updateDashboard(){
+  const records = JSON.parse(localStorage.getItem('examRecords') || '[]');
+  document.getElementById('totalStudents').textContent = records.length;
+  docum
